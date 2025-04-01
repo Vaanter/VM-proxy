@@ -1,0 +1,9 @@
+proxies = [
+    {upstream = "0.0.0.0:6141", downstream = "127.0.0.1:5432"},
+    {upstream = "0.0.0.0:6142", downstream = "google.com:443"},
+    {upstream = "0.0.0.0:6143", downstream = "daopsdiopasdiaopsdipaso.com:36659"}
+]
+
+target = "127.0.0.1:5552"
+host = true
+db_path = ""
