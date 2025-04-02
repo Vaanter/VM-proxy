@@ -2,7 +2,8 @@ use crate::proxy::Proxy;
 use crate::sqlite_proxy::main_loop;
 use config::Config;
 use once_cell::sync::Lazy;
-use rusqlite::Connection;
+use sqlite::SqliteConnection;
+use sqlx::{Connection, sqlite};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -49,18 +50,21 @@ fn main() {
 
 async fn run() {
   let db_path = CONFIG.get_string("db_path").unwrap();
-  let db = Connection::open(&db_path).unwrap();
+  let db = SqliteConnection::connect(&db_path).await.unwrap();
   let target = CONFIG.get_string("target").unwrap();
   let host = CONFIG.get_bool("host").unwrap();
   let handle = tokio::spawn(async move {
-    main_loop(target, Arc::new(Mutex::new(db)), host).await.unwrap();
+    main_loop(target, Arc::new(Mutex::new(db)), host)
+      .await
+      .unwrap();
   });
   match ctrl_c().await {
     Ok(()) => {
       info!("Ctrl-c received!");
-      if let Err(e) = timeout(Duration::from_secs(5), handle).await {
-        error!("Task failed to exit in time");
-      }
+      handle.abort();
+      // if let Err(e) = timeout(Duration::from_secs(5), handle).await {
+      //   error!("Task failed to exit in time");
+      // }
     }
     Err(e) => error!("Ctrl-c signal error! {e}"),
   }
