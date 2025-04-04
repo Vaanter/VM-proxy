@@ -11,6 +11,7 @@ use tokio::sync::mpsc::{Receiver, Sender, channel};
 use tokio::task::yield_now;
 use tokio::time::sleep;
 use tracing::{debug, error, info, trace};
+use tracing_attributes::instrument;
 
 pub async fn main_loop(
   address: String,
@@ -44,6 +45,7 @@ pub async fn main_loop(
   }
 }
 
+#[instrument(skip_all)]
 async fn connection_loop(
   db: Arc<Mutex<SqliteConnection>>,
   connection: (TcpStream, i64),
@@ -209,6 +211,9 @@ async fn writer_loop(
                 continue;
               }
             };
+            if let Err(e) = transaction.clear_cached_statements().await {
+              error!("Failed to clear cache. {}", e);
+            };
             if let Err(e) = transaction.commit().await {
               error!("Failed to commit transaction after inserting data. {}", e);
               continue;
@@ -280,6 +285,7 @@ async fn setup_client(
   connection_sender: Sender<(TcpStream, i64)>,
   db: Arc<Mutex<SqliteConnection>>,
 ) -> anyhow::Result<()> {
+  debug!("Starting client");
   loop {
     let connection_id = match poll_connection_id(db.clone()).await {
       Some(connection_id) => connection_id,
